@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import GoogleLogin from 'react-google-login';
 import axios from 'axios';
 import { useStyles } from './styles';
@@ -29,25 +30,38 @@ const Login = () => {
   const classes = useStyles();
   const [text, setText] = useState('');
   const [invalid, setInvalid] = useState(false);
+  const history = useHistory();
+  // const [googleId, setGoogleId] = useState();
+  // const [accessToken, setAccessToken] = useState();
+  // const [token, setToken] = 
+
+ 
 
   const responseGoogle = (google) => {
     if (google) {
-      console.log(google);
-      axios.get(`${process.env.REACT_APP_BACKEND_BASE_URL}/api/users/verify&email=${google.profileObj.email}`).then((userExist) => {
-        if (!userExist.data) {
-          axios.post(`${process.env.REACT_APP_BACKEND_BASE_URL}/api/users/create`, null, { params: {
+      axios.get(`${process.env.REACT_APP_BACKEND_BASE_URL}/api/user/verify&email=${google.profileObj.email}`).then((user) => {
+        if (user.data.status === 'INVALID_EMAIL') {
+          setText(user.data.message);
+          setInvalid(true);
+
+          return false;
+        }
+
+        if (!user.data) {
+          axios.post(`${process.env.REACT_APP_BACKEND_BASE_URL}/api/user/register`, null, { params: {
             name: google.profileObj.name,
             email: google.profileObj.email,
             google_id: google.googleId,
             google_access_token: google.accessToken,
             google_token_id: google.tokenId,
           }}).then((response) => {
+            history.push('/user/attendance');
             console.log(response.status);
           });
         } else {
-          if (userExist.data.status) {
-            setText(userExist.data.message);
-            setInvalid(true);
+          if (user.data.status) {
+            console.log(user.data);
+            history.push('/user/attendance');
           }
         }
       });
