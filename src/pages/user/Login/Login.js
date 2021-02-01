@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import GoogleLogin from 'react-google-login';
-import axios from 'axios';
 import { useStyles } from './styles';
-import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
+import { Alert } from '@material-ui/lab';
 import { 
   Avatar, 
   CssBaseline,
@@ -12,17 +10,20 @@ import {
   Container,
   Box
 } from '@material-ui/core';
-import { Alert } from '@material-ui/lab';
+import { setCookie } from '../../../cookies';
+import GoogleLogin from 'react-google-login';
+import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
+import { verifyEmail, registerUser } from '../../../actions/UserActions';
 
 const AlertMessage = props => {
   return (
-    <div>
+    <>
       <Box pt={3}>
         <div>
           <Alert severity="error" icon={false} variant="filled">{props.text}</Alert>
         </div>
       </Box>
-    </div>
+    </>
   );
 }
 
@@ -31,40 +32,40 @@ const Login = () => {
   const [text, setText] = useState('');
   const [invalid, setInvalid] = useState(false);
   const history = useHistory();
-  // const [googleId, setGoogleId] = useState();
-  // const [accessToken, setAccessToken] = useState();
-  // const [token, setToken] = 
-
- 
 
   const responseGoogle = (google) => {
     if (google) {
-      axios.get(`${process.env.REACT_APP_BACKEND_BASE_URL}/api/user/verify&email=${google.profileObj.email}`).then((user) => {
-        if (user.data.status === 'INVALID_EMAIL') {
-          setText(user.data.message);
+      verifyEmail(google.profileObj.email).then((response) => {
+        const { data, status, message } = response;
+
+        if (status === 'INVALID_EMAIL') {
+          setText(message);
           setInvalid(true);
 
           return false;
         }
 
-        if (!user.data) {
-          axios.post(`${process.env.REACT_APP_BACKEND_BASE_URL}/api/user/register`, null, { params: {
+        // register user
+        if (!data && status === 'OK') {
+          let params = {
             name: google.profileObj.name,
             email: google.profileObj.email,
             google_id: google.googleId,
             google_access_token: google.accessToken,
-            google_token_id: google.tokenId,
-          }}).then((response) => {
-            history.push('/user/attendance');
-            console.log(response.status);
-          });
+            google_token_id: google.tokenId
+          };
+
+          registerUser(params).then(() => {
+            setCookie(data.google_access_token);
+          })
         } else {
-          if (user.data.status) {
-            console.log(user.data);
-            history.push('/user/attendance');
+          if (status === 'OK') {
+            setCookie(data.google_access_token);
           }
         }
-      });
+
+        history.push('/user/attendance');
+      })
     }
   }
   
